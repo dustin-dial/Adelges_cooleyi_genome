@@ -1,9 +1,6 @@
-#Canu: only corrected reads were used in our assembly pipeline
+#Canu: Canu-corrected reads were used as input to Flye
 
-canu \
- -p Ac_flye -d Ac_flye_pbio \
- genomeSize=270m \
- -pacbio Ac_flye.fasta
+canu -p Ac_flye -d Ac_flye_pbio genomeSize=270m -pacbio Ac_flye.fasta
 
 #Flye
 
