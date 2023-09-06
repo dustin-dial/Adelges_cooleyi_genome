@@ -1,0 +1,70 @@
+#!/bin/bash
+#SBATCH --partition=highmem_p
+#SBATCH --job-name=diamond_database_taxonkit_dd.sh
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=8
+#SBATCH --time=100:00:00
+#SBATCH --mem=100gb
+
+cd $SLURM_SUBMIT_DIR
+
+ml DIAMOND/2.0.4-GCC-8.3.0
+ml seqkit/0.16.1
+
+#blastdbcmd -db /db/ncbiblast/refseq/10182018/refseq_protein -dbtype prot -entry all -outfmt "%f" -out - | gzip -c > refseq_protein.fa.gz
+
+#retrieving taxids
+
+taxonkit list --ids 2157 --indent "" --data-dir taxdmp/ > archaea.taxid.txt
+
+taxonkit list --ids 6656 --indent "" --data-dir taxdmp/ > arthropoda.taxid.txt 
+
+taxonkit list --ids 4751 --indent "" --data-dir taxdmp/ > fungi.taxid.txt 
+
+taxonkit list --ids 6231 --indent "" --data-dir taxdmp/ > nematodes.taxid.txt 
+
+taxonkit list --ids 10239 --indent "" --data-dir taxdmp/ > viruses.taxid.txt
+
+#archaea
+
+gunzip -dc prot.accession2taxid.gz | csvtk grep -t -f taxid -P archaea.taxid.txt | csvtk cut -t -f accession.version | sed 1d > archaea.acc.txt
+
+id=archaea
+cat <(echo) <(gzip -dc refseq_protein.fa.gz) | perl -e 'BEGIN{ $/ = "\n>"; <>; } while(<>){s/>$//;  $i = index $_, "\n"; $h = substr $_, 0, $i; $s = substr $_, $i+1; if ($h !~ />/) { print ">$_"; next; }; $h = ">$h"; while($h =~ />([^ ]+ .+?) ?(?=>|$)/g){ $h1 = $1; $h1 =~ s/^\W+//; print ">$h1\n$s";} } ' | seqkit grep --delete-matched -f $id.acc.txt -o refseq_protein.$id.fa.gz
+
+#arthropoda
+
+gunzip -dc prot.accession2taxid.gz | csvtk grep -t -f taxid -P arthropoda.taxid.txt | csvtk cut -t -f accession.version | sed 1d > arthropoda.acc.txt
+
+id=arthropoda
+cat <(echo) <(gzip -dc refseq_protein.fa.gz) | perl -e 'BEGIN{ $/ = "\n>"; <>; } while(<>){s/>$//;  $i = index $_, "\n"; $h = substr $_, 0, $i; $s = substr $_, $i+1; if ($h !~ />/) { print ">$_"; next; }; $h = ">$h"; while($h =~ />([^ ]+ .+?) ?(?=>|$)/g){ $h1 = $1; $h1 =~ s/^\W+//; print ">$h1\n$s";} } ' | seqkit grep --delete-matched -f $id.acc.txt -o refseq_protein.$id.fa.gz
+
+#fungi
+
+gunzip -dc prot.accession2taxid.gz | csvtk grep -t -f taxid -P fungi.taxid.txt | csvtk cut -t -f accession.version | sed 1d > fungi.acc.txt
+
+id=fungi
+cat <(echo) <(gzip -dc refseq_protein.fa.gz) | perl -e 'BEGIN{ $/ = "\n>"; <>; } while(<>){s/>$//;  $i = index $_, "\n"; $h = substr $_, 0, $i; $s = substr $_, $i+1; if ($h !~ />/) { print ">$_"; next; }; $h = ">$h"; while($h =~ />([^ ]+ .+?) ?(?=>|$)/g){ $h1 = $1; $h1 =~ s/^\W+//; print ">$h1\n$s";} } ' | seqkit grep --delete-matched -f $id.acc.txt -o refseq_protein.$id.fa.gz
+
+#nematodes
+
+gunzip -dc prot.accession2taxid.gz | csvtk grep -t -f taxid -P nematodes.taxid.txt | csvtk cut -t -f accession.version | sed 1d > nematodes.acc.txt
+
+id=nematodes
+cat <(echo) <(gzip -dc refseq_protein.fa.gz) | perl -e 'BEGIN{ $/ = "\n>"; <>; } while(<>){s/>$//;  $i = index $_, "\n"; $h = substr $_, 0, $i; $s = substr $_, $i+1; if ($h !~ />/) { print ">$_"; next; }; $h = ">$h"; while($h =~ />([^ ]+ .+?) ?(?=>|$)/g){ $h1 = $1; $h1 =~ s/^\W+//; print ">$h1\n$s";} } ' | seqkit grep --delete-matched -f $id.acc.txt -o refseq_protein.$id.fa.gz
+
+#viruses
+
+gunzip -dc prot.accession2taxid.gz | csvtk grep -t -f taxid -P viruses.taxid.txt | csvtk cut -t -f accession.version | sed 1d > viruses.acc.txt
+
+id=viruses
+cat <(echo) <(gzip -dc refseq_protein.fa.gz) | perl -e 'BEGIN{ $/ = "\n>"; <>; } while(<>){s/>$//;  $i = index $_, "\n"; $h = substr $_, 0, $i; $s = substr $_, $i+1; if ($h !~ />/) { print ">$_"; next; }; $h = ">$h"; while($h =~ />([^ ]+ .+?) ?(?=>|$)/g){ $h1 = $1; $h1 =~ s/^\W+//; print ">$h1\n$s";} } ' | seqkit grep --delete-matched -f $id.acc.txt -o refseq_protein.$id.fa.gz
+
+cat refseq_protein.archaea.fa.gz refseq_protein.fungi.fa.gz refseq_protein.bacteria.fa.gz refseq_protein.arthropoda.fa.gz refseq_protein.nematodes.fa.gz refseq_protein.viruses.fa.gz > all_prot.fa.gz
+
+gunzip all_prot.fa.gz 
+
+diamond makedb --in all_prot.fa --db custom_refseq_db_dd --taxonnodes ./nodes.dmp --taxonmap ./prot.accession2taxid.gz
+
+
+
